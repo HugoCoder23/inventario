@@ -1,0 +1,209 @@
+{
+  "info": {
+    "name": "Sistema de Inventario API",
+    "description": "Colección de ejemplo con casos de éxito y error. Ejecuta primero 'Login (admin)': guarda el token en la variable {{token}}.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "token", "value": "" },
+    { "key": "productId", "value": "1" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (admin) ✅",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('200 OK', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('token', pm.response.json().token);"
+            ]}
+          }],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@demo.local\",\n  \"password\": \"Demo1234!\"\n}" }
+          }
+        },
+        {
+          "name": "Login con contraseña incorrecta ❌ 401",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('401', () => pm.response.to.have.status(401));"] } }],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@demo.local\",\n  \"password\": \"incorrecta\"\n}" }
+          }
+        },
+        {
+          "name": "Usuario actual ✅",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/auth/me" }
+        }
+      ]
+    },
+    {
+      "name": "Productos",
+      "item": [
+        {
+          "name": "Listar con filtros y paginación ✅",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/products?q=&active=true&lowStock=&page=0&size=10&sort=name,asc",
+              "host": ["{{baseUrl}}"], "path": ["api", "products"],
+              "query": [
+                { "key": "q", "value": "" },
+                { "key": "active", "value": "true" },
+                { "key": "lowStock", "value": "" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" },
+                { "key": "sort", "value": "name,asc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crear producto ✅ 201",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": [
+              "pm.test('201 Created', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('productId', pm.response.json().id);"
+            ]}
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/products",
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"DEMO-{{$randomInt}}\",\n  \"name\": \"Producto de prueba\",\n  \"description\": \"Creado desde Postman\",\n  \"categoryId\": 1,\n  \"cost\": 100.00,\n  \"price\": 150.00,\n  \"minStock\": 5,\n  \"initialStock\": 10\n}" }
+          }
+        },
+        {
+          "name": "Crear con SKU duplicado ❌ 409",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('409', () => pm.response.to.have.status(409));"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/products",
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"ELE-LAP-001\",\n  \"name\": \"Duplicado\",\n  \"categoryId\": 1,\n  \"cost\": 1,\n  \"price\": 1,\n  \"minStock\": 0\n}" }
+          }
+        },
+        {
+          "name": "Crear con datos inválidos ❌ 400",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('400', () => pm.response.to.have.status(400));"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/products",
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"\",\n  \"name\": \"\",\n  \"categoryId\": null,\n  \"cost\": -5,\n  \"price\": 10,\n  \"minStock\": -1\n}" }
+          }
+        },
+        { "name": "Consultar producto ✅", "request": { "method": "GET", "url": "{{baseUrl}}/api/products/{{productId}}" } },
+        { "name": "Producto inexistente ❌ 404", "request": { "method": "GET", "url": "{{baseUrl}}/api/products/999999" } },
+        {
+          "name": "Modificar producto ✅",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/products/{{productId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"sku\": \"DEMO-EDIT-{{productId}}\",\n  \"name\": \"Producto editado\",\n  \"categoryId\": 1,\n  \"cost\": 110.00,\n  \"price\": 160.00,\n  \"minStock\": 4\n}" }
+          }
+        },
+        { "name": "Desactivar producto ✅", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/products/{{productId}}" } },
+        { "name": "Reactivar producto ✅", "request": { "method": "PATCH", "url": "{{baseUrl}}/api/products/{{productId}}/activate" } }
+      ]
+    },
+    {
+      "name": "Movimientos",
+      "item": [
+        {
+          "name": "Registrar entrada ✅ 201",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/stock-movements",
+            "body": { "mode": "raw", "raw": "{\n  \"productId\": {{productId}},\n  \"type\": \"IN\",\n  \"quantity\": 20,\n  \"reason\": \"Compra a proveedor\",\n  \"reference\": \"OC-5001\"\n}" }
+          }
+        },
+        {
+          "name": "Registrar salida ✅ 201",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/stock-movements",
+            "body": { "mode": "raw", "raw": "{\n  \"productId\": {{productId}},\n  \"type\": \"OUT\",\n  \"quantity\": 3,\n  \"reference\": \"FAC-9001\"\n}" }
+          }
+        },
+        {
+          "name": "Salida mayor al stock ❌ 422",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('422', () => pm.response.to.have.status(422));"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/stock-movements",
+            "body": { "mode": "raw", "raw": "{\n  \"productId\": {{productId}},\n  \"type\": \"OUT\",\n  \"quantity\": 999999\n}" }
+          }
+        },
+        {
+          "name": "Ajuste sin motivo ❌ 400",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('400', () => pm.response.to.have.status(400));"] } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/stock-movements",
+            "body": { "mode": "raw", "raw": "{\n  \"productId\": {{productId}},\n  \"type\": \"ADJUSTMENT\",\n  \"quantity\": 1,\n  \"direction\": \"DECREASE\"\n}" }
+          }
+        },
+        {
+          "name": "Ajuste por conteo físico ✅ 201",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/stock-movements",
+            "body": { "mode": "raw", "raw": "{\n  \"productId\": {{productId}},\n  \"type\": \"ADJUSTMENT\",\n  \"quantity\": 1,\n  \"direction\": \"DECREASE\",\n  \"reason\": \"Conteo físico: pieza dañada\",\n  \"reference\": \"INV-2026-02\"\n}" }
+          }
+        },
+        {
+          "name": "Historial con filtros ✅",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/stock-movements?productId={{productId}}&page=0&size=20" }
+        },
+        {
+          "name": "Sin token ❌ 401",
+          "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{baseUrl}}/api/stock-movements" }
+        }
+      ]
+    },
+    {
+      "name": "Reportes",
+      "item": [
+        { "name": "Dashboard ✅", "request": { "method": "GET", "url": "{{baseUrl}}/api/dashboard" } },
+        { "name": "Stock bajo ✅", "request": { "method": "GET", "url": "{{baseUrl}}/api/reports/low-stock" } },
+        { "name": "Resumen de movimientos (30 días) ✅", "request": { "method": "GET", "url": "{{baseUrl}}/api/reports/movements?tz=America/Mexico_City" } },
+        { "name": "Rango de fechas inválido ❌ 400", "request": { "method": "GET", "url": "{{baseUrl}}/api/reports/movements?from=2026-03-01&to=2026-01-01" } },
+        { "name": "Exportar productos CSV ✅", "request": { "method": "GET", "url": "{{baseUrl}}/api/reports/products/export?active=true" } },
+        { "name": "Exportar movimientos CSV ✅", "request": { "method": "GET", "url": "{{baseUrl}}/api/reports/movements/export?type=OUT" } }
+      ]
+    },
+    {
+      "name": "Categorías y usuarios",
+      "item": [
+        { "name": "Listar categorías ✅", "request": { "method": "GET", "url": "{{baseUrl}}/api/categories" } },
+        {
+          "name": "Eliminar categoría con productos ❌ 409",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/categories/1" }
+        },
+        { "name": "Listar usuarios (admin) ✅", "request": { "method": "GET", "url": "{{baseUrl}}/api/users" } }
+      ]
+    }
+  ]
+}
